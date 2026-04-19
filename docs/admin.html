@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 — 뉴 라이프 클래스 출석부</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#F0F4FF;min-height:100vh;color:#1F2937}
@@ -223,30 +224,38 @@
     render();
   }
 
+  var _adding = false;
+
   // ── 학생 추가 ──
   async function addStudent() {
+    if (_adding) return;
     var nameRaw = document.getElementById('nameInput').value.trim();
     var id      = document.getElementById('idInput').value.trim();
     if (!nameRaw) { document.getElementById('nameInput').focus(); return; }
+    _adding = true;
+
     var names = nameRaw.split(/[,，、\n]/).map(function(n){ return n.trim(); }).filter(Boolean);
 
     // 즉시 화면에 추가 (낙관적 UI)
-    names.forEach(function(name) {
-      var tempUid = 'temp_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-      students.push({ name: name, id: names.length === 1 ? id : '', uid: tempUid });
+    names.forEach(function(name, i) {
+      students.push({ name: name, id: names.length === 1 ? id : '', uid: 'temp_' + Date.now() + '_' + i });
     });
     document.getElementById('nameInput').value = '';
     document.getElementById('idInput').value   = '';
-    document.getElementById('nameInput').focus();
     render();
     toast('✓ ' + names.join(', ') + ' 추가됨');
+    document.getElementById('nameInput').focus();
 
-    // 백그라운드에서 서버에 저장 후 uid 동기화
-    for (var i = 0; i < names.length; i++) {
-      callScript({action:'addStudent', name:names[i], id: names.length===1 ? id : ''}).catch(function(){});
+    // 서버에 순서대로 저장 후 실제 uid로 한 번만 동기화
+    try {
+      for (var i = 0; i < names.length; i++) {
+        await callScript({action:'addStudent', name:names[i], id: names.length===1 ? id : ''});
+      }
+      await loadStudents();
+    } catch(e) {
+      toast('저장 실패 — 새로고침 후 확인하세요');
     }
-    // 2초 후 실제 uid로 동기화
-    setTimeout(loadStudents, 2000);
+    _adding = false;
   }
 
   // ── 학생 삭제 ──
@@ -266,10 +275,16 @@
     await loadStudents();
   }
 
-  // ── QR 이미지 URL (qrserver.com 사용 - 서버 불필요) ──
-  function studentQrSrc(s, size) {
-    var data = 'ATT:' + JSON.stringify({n: s.name, id: s.id||''});
-    return QR_API + (size||150) + 'x' + (size||150) + '&data=' + encodeURIComponent(data);
+  // ── QR 데이터 문자열 ──
+  function studentQrData(s) {
+    return 'ATT:' + JSON.stringify({n: s.name, id: s.id||''});
+  }
+
+  // ── Canvas로 QR 생성 (외부 API 없음, 즉시 표시) ──
+  function makeQrCanvas(data, size) {
+    var div = document.createElement('div');
+    new QRCode(div, {text: data, width: size, height: size, colorDark:'#1F2937', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.M});
+    return div.querySelector('canvas') || div.querySelector('img');
   }
 
   // ── 렌더 ──
@@ -301,91 +316,85 @@
 
   function renderQRGrid() {
     var grid = document.getElementById('qrGrid');
-    grid.innerHTML = students.map(function(s){
-      var src       = studentQrSrc(s, 150);
-      var safeName  = encodeURIComponent(s.name);
-      var safeId    = encodeURIComponent(s.id||'');
-      var safeData  = encodeURIComponent(JSON.stringify({n:s.name,id:s.id||''}));
-      return '<div class="qr-item">' +
-        '<div class="qr-img-wrap" onclick="openModal(\''+encodeURIComponent(src)+'\',\''+safeName+'\',\''+safeId+'\')" title="클릭하면 크게 봅니다">' +
-          '<img src="'+src+'" alt="'+s.name+' QR" onerror="this.parentNode.innerHTML=\'<span style=color:#EF4444;font-size:.75rem;padding:10px;display:block>생성 오류</span>\'" />' +
-        '</div>' +
+    grid.innerHTML = '';
+    students.forEach(function(s, idx) {
+      var safeName = encodeURIComponent(s.name);
+      var safeId   = encodeURIComponent(s.id||'');
+      var item = document.createElement('div');
+      item.className = 'qr-item';
+      var wrap = document.createElement('div');
+      wrap.className = 'qr-img-wrap';
+      wrap.title = '클릭하면 크게 봅니다';
+      wrap.onclick = function(){ openModalCanvas(s); };
+      var qrEl = makeQrCanvas(studentQrData(s), 150);
+      qrEl.style.cssText = 'width:150px;height:150px;display:block';
+      wrap.appendChild(qrEl);
+      item.innerHTML =
         '<div class="qr-name">'+s.name+'</div>' +
         '<div class="qr-id-label">'+(s.id||'')+'</div>' +
-        '<button class="btn btn-outline btn-sm" onclick="dlStudentQR(\''+safeName+'\',\''+safeData+'\')">⬇️ 저장</button>' +
-      '</div>';
-    }).join('');
+        '<button class="btn btn-outline btn-sm" onclick="dlStudentQRCanvas('+idx+')">⬇️ 저장</button>';
+      item.insertBefore(wrap, item.firstChild);
+      grid.appendChild(item);
+    });
   }
 
-  // ── 개인 QR 다운로드 ──
-  async function dlStudentQR(encodedName, encodedData) {
-    var name = decodeURIComponent(encodedName);
-    var data = 'ATT:' + decodeURIComponent(encodedData);
-    var src  = QR_API + '300x300&data=' + encodeURIComponent(data);
-    var blob = await fetch(src).then(function(r){ return r.blob(); });
-    var a    = document.createElement('a');
-    a.href   = URL.createObjectURL(blob);
-    a.download = 'QR_' + name + '.png';
+  // ── 개인 QR 다운로드 (Canvas 기반, 즉시) ──
+  function dlStudentQRCanvas(idx) {
+    var s = students[idx];
+    var canvas = makeQrCanvas(studentQrData(s), 300);
+    var a = document.createElement('a');
+    a.href = canvas.toDataURL ? canvas.toDataURL('image/png') : canvas.src;
+    a.download = 'QR_' + s.name + '.png';
     a.click();
-    URL.revokeObjectURL(a.href);
-    toast(name + ' QR 저장됨');
+    toast(s.name + ' QR 저장됨');
   }
 
-  // ── 공용 QR ──
+  // ── 공용 QR (Canvas 기반, 즉시 표시) ──
   function genPublicQR() {
-    var target = SCRIPT_URL;
-    var src    = QR_API + '220x220&data=' + encodeURIComponent(target);
-    var box    = document.getElementById('publicQrBox');
-    box.innerHTML = '<div class="qr-spinner"></div>';
-    var img = new Image();
-    img.onload = function(){
-      box.innerHTML = '';
-      img.style.borderRadius = '8px';
-      box.appendChild(img);
-      document.getElementById('dlBtn').style.display = 'inline-block';
-      document.getElementById('prBtn').style.display = 'inline-block';
-    };
-    img.onerror = function(){ box.innerHTML = '<span style="color:#EF4444">QR 생성 오류</span>'; };
-    img.src = src;
-    document.getElementById('publicQrUrl').textContent = target;
+    var box = document.getElementById('publicQrBox');
+    box.innerHTML = '';
+    var qrEl = makeQrCanvas(SCRIPT_URL, 220);
+    qrEl.style.cssText = 'border-radius:8px;display:block';
+    box.appendChild(qrEl);
+    document.getElementById('publicQrUrl').textContent = SCRIPT_URL;
+    document.getElementById('dlBtn').style.display = 'inline-block';
+    document.getElementById('prBtn').style.display = 'inline-block';
   }
 
-  async function dlPublicQR() {
-    var src  = QR_API + '300x300&data=' + encodeURIComponent(SCRIPT_URL);
-    var blob = await fetch(src).then(function(r){ return r.blob(); });
-    var a    = document.createElement('a');
-    a.href   = URL.createObjectURL(blob);
+  function dlPublicQR() {
+    var canvas = makeQrCanvas(SCRIPT_URL, 300);
+    var a = document.createElement('a');
+    a.href = canvas.toDataURL ? canvas.toDataURL('image/png') : canvas.src;
     a.download = 'newlife_QR.png';
     a.click();
-    URL.revokeObjectURL(a.href);
     toast('QR 저장됨');
   }
 
   function prPublicQR() {
-    var src = QR_API + '280x280&data=' + encodeURIComponent(SCRIPT_URL);
-    var w   = window.open('','_blank');
+    var canvas = makeQrCanvas(SCRIPT_URL, 280);
+    var dataUrl = canvas.toDataURL ? canvas.toDataURL('image/png') : canvas.src;
+    var w = window.open('','_blank');
     w.document.write('<!DOCTYPE html><html><head><title>뉴 라이프 클래스 QR</title>' +
       '<style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;text-align:center;padding:30px;background:#fff}' +
       'h2{font-size:1.8rem;margin-bottom:12px;color:#1F2937}img{border:2px solid #eee;border-radius:12px;padding:10px}p{color:#666;font-size:1rem;margin-top:12px}</style>' +
       '</head><body><h2>📋 뉴 라이프 클래스 출석 체크</h2>' +
-      '<img src="'+src+'" width="280" height="280"/>' +
+      '<img src="'+dataUrl+'" width="280" height="280"/>' +
       '<p>QR 코드를 스캔하고 이름을 입력하세요</p>' +
       '<script>window.onload=function(){window.print()}<\/script></body></html>');
   }
 
-  // ── 확대 모달 ──
-  var _modalSrc = '', _modalFileName = '';
+  // ── 확대 모달 (Canvas 기반) ──
+  var _modalStudent = null;
 
-  function openModal(encodedSrc, encodedName, encodedId) {
-    var name   = decodeURIComponent(encodedName);
-    var id     = decodeURIComponent(encodedId);
-    var origSrc= decodeURIComponent(encodedSrc);
-    var bigSrc = origSrc.replace(/size=\d+x\d+/, 'size=400x400').replace(/300x300/, '400x400').replace(/150x150/, '400x400');
-    document.getElementById('modalQrImg').src       = bigSrc;
-    document.getElementById('modalName').textContent = name;
-    document.getElementById('modalId').textContent   = id || '';
-    _modalSrc      = bigSrc;
-    _modalFileName = 'QR_' + name + '.png';
+  function openModalCanvas(s) {
+    _modalStudent = s;
+    var wrap = document.querySelector('.modal-qr-wrap');
+    wrap.innerHTML = '';
+    var qrEl = makeQrCanvas(studentQrData(s), 280);
+    qrEl.style.cssText = 'width:280px;height:280px;display:block;border-radius:8px';
+    wrap.appendChild(qrEl);
+    document.getElementById('modalName').textContent = s.name;
+    document.getElementById('modalId').textContent   = s.id || '';
     document.getElementById('qrModal').classList.add('show');
     document.body.style.overflow = 'hidden';
   }
@@ -396,14 +405,9 @@
     document.body.style.overflow = '';
   }
 
-  async function dlFromModal() {
-    var blob = await fetch(_modalSrc).then(function(r){ return r.blob(); });
-    var a    = document.createElement('a');
-    a.href   = URL.createObjectURL(blob);
-    a.download = _modalFileName;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    toast(_modalFileName.replace('QR_','').replace('.png','') + ' QR 저장됨');
+  function dlFromModal() {
+    if (!_modalStudent) return;
+    dlStudentQRCanvas(students.indexOf(_modalStudent));
   }
 
   document.addEventListener('keydown', function(e){
