@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR 스캔 출석 — 방식 2</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#0F172A;min-height:100vh;color:white}
+    .header{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)}
+    .header h1{font-size:1rem;font-weight:700}
+    .header a{color:rgba(255,255,255,.5);text-decoration:none;font-size:.8rem;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,.06)}
+    .header a:hover{background:rgba(255,255,255,.12);color:white}
+    .main{max-width:520px;margin:0 auto;padding:20px 16px}
+    #reader{width:100%;border-radius:20px;overflow:hidden;background:#1e293b}
+    #reader video{width:100%!important}
+    .status-pill{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.07);border-radius:12px;padding:14px 16px;margin:14px 0}
+    .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .dot.scanning{background:#10B981;animation:pulse 1.2s ease-in-out infinite}
+    .dot.idle{background:#6B7280}
+    .dot.error{background:#EF4444}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+    .status-text{font-size:.9rem;color:rgba(255,255,255,.75)}
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;align-items:center;justify-content:center;padding:24px}
+    .overlay.show{display:flex}
+    .popup{background:white;border-radius:28px;padding:36px 28px;text-align:center;max-width:320px;width:100%;animation:pop .3s cubic-bezier(.34,1.56,.64,1)}
+    @keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+    .popup.error-popup{background:#FEF2F2}
+    .popup-icon{font-size:4rem;margin-bottom:10px}
+    .popup-name{font-size:1.9rem;font-weight:900;color:#1F2937;margin-bottom:4px}
+    .popup-time{font-size:.9rem;color:#9CA3AF;margin-bottom:16px}
+    .popup-badge{display:inline-block;background:#D1FAE5;color:#065F46;padding:6px 18px;border-radius:20px;font-size:.85rem;font-weight:700}
+    .popup-badge.pending{background:#FEF3C7;color:#92400E}
+    .popup-badge.fail{background:#FEE2E2;color:#991B1B}
+    .log-header{font-size:.75rem;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+    .log-list{display:flex;flex-direction:column;gap:8px}
+    .log-item{background:rgba(255,255,255,.05);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;animation:fadeIn .3s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+    .log-name{font-weight:600;font-size:.9rem}
+    .log-id{font-size:.75rem;color:rgba(255,255,255,.4);margin-left:6px}
+    .log-time{font-size:.78rem;color:rgba(255,255,255,.45);text-align:right}
+    .log-ok{color:#10B981;font-size:.8rem;font-weight:700}
+    .log-fail{color:#EF4444;font-size:.8rem}
+    .empty-log{text-align:center;color:rgba(255,255,255,.25);font-size:.85rem;padding:20px 0}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎫 방식 2 — 개인 QR 스캔 출석</h1>
+    <a href="index.html">← 메인</a>
+  </div>
+  <div class="main">
+    <div id="reader"></div>
+    <div class="status-pill">
+      <div class="dot scanning" id="statusDot"></div>
+      <span class="status-text" id="statusText">개인 QR코드를 카메라에 인식시키세요...</span>
+    </div>
+    <div class="log-header">오늘 출석 기록</div>
+    <div class="log-list" id="logList">
+      <div class="empty-log">아직 출석 기록이 없습니다</div>
+    </div>
+  </div>
+  <div class="overlay" id="overlay">
+    <div class="popup" id="popup">
+      <div class="popup-icon" id="popIcon">⏳</div>
+      <div class="popup-name" id="popName"></div>
+      <div class="popup-time" id="popTime"></div>
+      <span class="popup-badge pending" id="popBadge">처리 중...</span>
+    </div>
+  </div>
+  <script>
+    var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxzSlza3JQWdwDELV5lcxklhg6jdraYpqg5zD7q59Vv-csfKUsDGb4Fu_Kry0JfO8Yc/exec';
+    var processing = false, log = [];
+
+    function parseQR(text) {
+      if (!text.startsWith('ATT:')) return null;
+      try { return JSON.parse(text.slice(4)); } catch { return null; }
+    }
+
+    async function handleDetected(text) {
+      if (processing) return;
+      var data = parseQR(text);
+      if (!data || !data.n) return;
+      processing = true;
+      var now = new Date(), timeStr = now.toLocaleTimeString('ko-KR');
+      showPopup(false, data.n, timeStr, 'pending');
+      setStatus('idle', '인식됨: ' + data.n + ' — 등록 중...');
+      try {
+        var res = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: {'Content-Type':'application/x-www-form-urlencoded'},
+          body: 'name=' + encodeURIComponent(data.n) + '&studentId=' + encodeURIComponent(data.id||'') + '&type=style2',
+          redirect: 'follow'
+        });
+        var result = await res.json();
+        if (result.success) {
+          showPopup(true, data.n, result.time || timeStr, 'ok');
+          addLog(data.n, data.id||'', result.time||timeStr, true);
+        } else {
+          showPopup(false, '오류', result.message, 'fail');
+          addLog(data.n, data.id||'', timeStr, false);
+        }
+      } catch(err) {
+        showPopup(false, '연결 오류', err.message, 'fail');
+        addLog(data.n, data.id||'', timeStr, false);
+      }
+      setTimeout(function(){
+        document.getElementById('overlay').classList.remove('show');
+        processing = false;
+        setStatus('scanning', '개인 QR코드를 카메라에 인식시키세요...');
+      }, 2500);
+    }
+
+    function showPopup(success, name, time, state) {
+      var popup = document.getElementById('popup');
+      popup.className = 'popup' + (state === 'fail' ? ' error-popup' : '');
+      document.getElementById('popIcon').textContent = state==='ok' ? '🎉' : state==='fail' ? '❌' : '⏳';
+      document.getElementById('popName').textContent = name;
+      document.getElementById('popTime').textContent = time;
+      var badge = document.getElementById('popBadge');
+      badge.className = 'popup-badge ' + state;
+      badge.textContent = state==='ok' ? '출석 완료 ✓' : state==='fail' ? '등록 실패' : '처리 중...';
+      document.getElementById('overlay').classList.add('show');
+    }
+
+    function setStatus(type, text) {
+      document.getElementById('statusDot').className = 'dot ' + type;
+      document.getElementById('statusText').textContent = text;
+    }
+
+    function addLog(name, id, time, ok) {
+      log.unshift({name, id, time, ok});
+      var list = document.getElementById('logList');
+      list.innerHTML = log.slice(0,15).map(function(l){
+        return '<div class="log-item"><span class="log-name">' + l.name +
+          (l.id ? '<span class="log-id">'+l.id+'</span>' : '') +
+          '</span><div><div class="log-time">' + l.time + '</div>' +
+          '<div class="' + (l.ok?'log-ok':'log-fail') + '">' + (l.ok?'✓ 완료':'✗ 실패') + '</div></div></div>';
+      }).join('');
+    }
+
+    var scanner = new Html5Qrcode('reader');
+    scanner.start(
+      {facingMode:'environment'},
+      {fps:10, qrbox:{width:260,height:260}},
+      function(text){ handleDetected(text); },
+      function(){}
+    ).catch(function(err){ setStatus('error','카메라 시작 실패: '+err); });
+  </script>
+</body>
+</html>

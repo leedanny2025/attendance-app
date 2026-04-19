@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 — 뉴 라이프 클래스 출석부</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#F0F4FF;min-height:100vh;color:#1F2937}
+    .header{background:linear-gradient(135deg,#4F46E5,#7C3AED);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(79,70,229,.3)}
+    .header-left h1{color:white;font-size:1.05rem;font-weight:800}
+    .header-left p{color:rgba(255,255,255,.65);font-size:.78rem;margin-top:2px}
+    .header-links{display:flex;gap:8px}
+    .header-links a{color:rgba(255,255,255,.85);text-decoration:none;font-size:.8rem;padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.3);transition:background .15s}
+    .header-links a:hover{background:rgba(255,255,255,.18)}
+    .tabs{display:flex;background:white;border-bottom:2px solid #E5E7EB;padding:0 16px;overflow-x:auto}
+    .tab{padding:14px 20px;font-size:.88rem;font-weight:700;color:#9CA3AF;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;margin-bottom:-2px;transition:color .15s,border-color .15s}
+    .tab.active{color:#4F46E5;border-bottom-color:#4F46E5}
+    .tab:hover:not(.active){color:#374151}
+    .content{max-width:720px;margin:0 auto;padding:24px 16px}
+    .section{display:none}
+    .section.active{display:block}
+    .card{background:white;border-radius:18px;padding:22px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+    .card-title{font-size:.95rem;font-weight:800;color:#1F2937;margin-bottom:16px}
+    .input-row{display:flex;gap:8px;margin-bottom:8px}
+    .input-row input{flex:1;border:2px solid #E5E7EB;border-radius:10px;padding:11px 14px;font-size:.9rem;font-family:inherit;outline:none;transition:border-color .2s;color:#1F2937}
+    .input-row input:focus{border-color:#4F46E5}
+    .hint{font-size:.76rem;color:#9CA3AF}
+    .btn{border:none;border-radius:10px;padding:11px 20px;font-size:.88rem;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .15s,transform .1s;white-space:nowrap}
+    .btn:active{transform:scale(.97)}
+    .btn:hover{opacity:.85}
+    .btn-primary{background:#4F46E5;color:white}
+    .btn-green{background:#10B981;color:white}
+    .btn-outline{background:white;color:#4F46E5;border:2px solid #4F46E5}
+    .btn-red{background:#FEE2E2;color:#DC2626;padding:6px 12px;font-size:.78rem}
+    .btn-gray{background:#F3F4F6;color:#6B7280}
+    .btn-sm{padding:7px 14px;font-size:.8rem}
+    .student-list{margin-top:4px}
+    .student-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #F3F4F6}
+    .student-row:last-child{border-bottom:none}
+    .s-info{display:flex;align-items:center;gap:12px}
+    .avatar{width:38px;height:38px;background:linear-gradient(135deg,#4F46E5,#7C3AED);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:.9rem;flex-shrink:0}
+    .s-name{font-weight:700;font-size:.92rem}
+    .s-id{font-size:.75rem;color:#9CA3AF}
+    .empty{text-align:center;color:#9CA3AF;padding:32px 0;font-size:.88rem}
+    .action-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+    .count-badge{background:#EEF2FF;color:#4F46E5;padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:700}
+    .qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+    .qr-item{background:white;border:2px solid #E5E7EB;border-radius:16px;padding:16px 12px;text-align:center;transition:border-color .15s,box-shadow .15s}
+    .qr-item:hover{border-color:#4F46E5;box-shadow:0 4px 16px rgba(79,70,229,.12)}
+    .qr-img-wrap{width:150px;height:150px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;background:#F8FAFF;border-radius:8px;overflow:hidden;cursor:pointer;transition:opacity .15s}
+    .qr-img-wrap:hover{opacity:.85}
+    .qr-img-wrap img{width:150px;height:150px;display:block}
+    .qr-name{font-weight:800;font-size:.88rem;color:#1F2937}
+    .qr-id-label{font-size:.72rem;color:#9CA3AF;margin-bottom:10px;min-height:16px}
+    .qr-item .btn{width:100%}
+    .qr-spinner{width:32px;height:32px;border:3px solid #E5E7EB;border-top-color:#4F46E5;border-radius:50%;animation:spin .8s linear infinite;margin:59px auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .public-qr-center{display:flex;flex-direction:column;align-items:center;gap:16px}
+    .public-qr-box{background:#F8FAFF;border:2px solid #C7D2FE;border-radius:16px;padding:20px;display:flex;align-items:center;justify-content:center;min-width:260px;min-height:260px}
+    .public-qr-box img{display:block;border-radius:8px}
+    .url-pill{background:#F3F4F6;border-radius:10px;padding:10px 16px;font-size:.78rem;color:#6B7280;word-break:break-all;text-align:center;max-width:400px}
+    .btn-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+    /* 확대 모달 */
+    .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(6px)}
+    .modal-backdrop.show{display:flex}
+    .modal-box{background:white;border-radius:28px;padding:32px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.4);animation:popIn .25s cubic-bezier(.34,1.56,.64,1);position:relative}
+    @keyframes popIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+    .modal-close{position:absolute;top:14px;right:16px;background:#F3F4F6;border:none;border-radius:50%;width:32px;height:32px;font-size:1rem;cursor:pointer;color:#6B7280;display:flex;align-items:center;justify-content:center}
+    .modal-close:hover{background:#E5E7EB}
+    .modal-qr-wrap{background:#F8FAFF;border:2px solid #E0E7FF;border-radius:16px;padding:16px;display:inline-block;margin-bottom:16px;cursor:pointer}
+    .modal-qr-wrap img{display:block;border-radius:8px}
+    .modal-name{font-size:1.4rem;font-weight:900;color:#1F2937;margin-bottom:4px}
+    .modal-id{font-size:.85rem;color:#9CA3AF;margin-bottom:20px;min-height:20px}
+    .modal-btns{display:flex;gap:10px;justify-content:center}
+
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F2937;color:white;padding:12px 24px;border-radius:24px;font-size:.88rem;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;z-index:999}
+    .toast.show{opacity:1}
+
+    @media print{
+      .header,.tabs,.action-bar,.card:not(#qrPrintCard){display:none!important}
+      body{background:white}
+      #qrPrintCard{display:block!important;box-shadow:none;padding:0}
+      .qr-grid{grid-template-columns:repeat(4,1fr);gap:12px}
+      .qr-item{break-inside:avoid;border:1px solid #ddd}
+      .btn{display:none!important}
+    }
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <h1>⚙️ 관리자 — 뉴 라이프 클래스</h1>
+    <p>출석부 관리 시스템</p>
+  </div>
+  <div class="header-links">
+    <a href="scan.html">📷 QR 스캔</a>
+    <a href="attend.html">✍️ 출석 폼</a>
+    <a href="https://docs.google.com/spreadsheets/d/1g-cWbaRneKY_9rbsj7yCSYpKiC_pXeRAD5qkBus56Es/edit" target="_blank">📊 시트</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab(this,'students')">👥 학생 관리 &amp; QR 생성</div>
+  <div class="tab" onclick="showTab(this,'publicqr')">📋 공용 QR 출력</div>
+</div>
+
+<div class="content">
+  <!-- 학생 관리 탭 -->
+  <div class="section active" id="tab-students">
+    <div class="card">
+      <div class="card-title">➕ 학생 추가</div>
+      <div class="input-row">
+        <input type="text" id="nameInput" placeholder="이름 (예: 홍길동)" style="flex:2"/>
+        <input type="text" id="idInput"   placeholder="학번 (선택)"      style="flex:1"/>
+        <button class="btn btn-primary" onclick="addStudent()">추가</button>
+      </div>
+      <p class="hint">여러 명: 쉼표로 구분 &nbsp;예) 홍길동, 김철수, 이영희</p>
+    </div>
+
+    <div class="card">
+      <div class="action-bar">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:.95rem;font-weight:800;">👥 학생 목록</span>
+          <span class="count-badge" id="countBadge" style="display:none;"></span>
+        </div>
+        <button class="btn btn-red btn-sm" id="clearAllBtn" style="display:none;" onclick="clearAll()">전체 삭제</button>
+      </div>
+      <div id="studentList" class="student-list">
+        <div class="empty">로딩 중...</div>
+      </div>
+    </div>
+
+    <div class="card" id="qrPrintCard" style="display:none;">
+      <div class="action-bar">
+        <div>
+          <span style="font-size:.95rem;font-weight:800;">🎫 개인 QR 코드</span>
+          <span style="font-size:.78rem;color:#9CA3AF;margin-left:8px;">방식 2용 — 인쇄해서 학생에게 배포</span>
+        </div>
+        <button class="btn btn-green btn-sm" onclick="window.print()">🖨️ 전체 인쇄</button>
+      </div>
+      <div class="qr-grid" id="qrGrid"></div>
+    </div>
+  </div>
+
+  <!-- 공용 QR 탭 -->
+  <div class="section" id="tab-publicqr">
+    <div class="card">
+      <div class="card-title">📋 방식 1 — 공용 QR 코드</div>
+      <p style="font-size:.85rem;color:#6B7280;line-height:1.7;margin-bottom:20px;">
+        이 QR코드를 프린트해서 교실에 붙여두세요.<br>
+        학생이 스캔하면 이름 입력 페이지로 이동합니다.<br>
+        <span style="color:#10B981;font-weight:600;">✓ 어느 네트워크에서든 접속 가능</span>
+      </p>
+      <div class="public-qr-center">
+        <div class="public-qr-box" id="publicQrBox"><div class="qr-spinner"></div></div>
+        <div class="url-pill" id="publicQrUrl">로딩 중...</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="genPublicQR()">🔄 재생성</button>
+          <button class="btn btn-outline" id="dlBtn" style="display:none" onclick="dlPublicQR()">⬇️ 다운로드</button>
+          <button class="btn btn-gray"    id="prBtn" style="display:none" onclick="prPublicQR()">🖨️ 인쇄</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 확대 모달 -->
+<div class="modal-backdrop" id="qrModal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-qr-wrap" onclick="dlFromModal()">
+      <img id="modalQrImg" src="" width="280" height="280" alt="QR 코드" title="클릭하면 저장됩니다"/>
+    </div>
+    <div class="modal-name" id="modalName"></div>
+    <div class="modal-id"   id="modalId"></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="dlFromModal()">⬇️ 저장</button>
+      <button class="btn btn-gray"    onclick="closeModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxzSlza3JQWdwDELV5lcxklhg6jdraYpqg5zD7q59Vv-csfKUsDGb4Fu_Kry0JfO8Yc/exec';
+  var QR_API     = 'https://api.qrserver.com/v1/create-qr-code/?color=1F2937&bgcolor=ffffff&format=png&size=';
+  var students   = [];
+
+  // ── JSONP ──
+  function callScript(params) {
+    return new Promise(function(resolve, reject) {
+      var cb   = '_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      var url  = new URL(SCRIPT_URL);
+      Object.entries(params).forEach(function(kv){ url.searchParams.set(kv[0], kv[1]); });
+      url.searchParams.set('callback', cb);
+      var t = setTimeout(function(){ delete window[cb]; s.remove(); reject(new Error('시간 초과')); }, 12000);
+      window[cb] = function(data){ clearTimeout(t); delete window[cb]; s.remove(); resolve(data); };
+      var s = document.createElement('script');
+      s.src     = url.toString();
+      s.onerror = function(){ clearTimeout(t); delete window[cb]; reject(new Error('연결 오류')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  // ── 탭 ──
+  function showTab(el, name) {
+    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
+    el.classList.add('active');
+    document.getElementById('tab-'+name).classList.add('active');
+    if (name === 'publicqr') genPublicQR();
+  }
+
+  // ── 학생 로드 ──
+  async function loadStudents() {
+    try {
+      var res = await callScript({action:'getStudents'});
+      students = res.students || [];
+    } catch(e) { students = []; }
+    render();
+  }
+
+  // ── 학생 추가 ──
+  async function addStudent() {
+    var nameRaw = document.getElementById('nameInput').value.trim();
+    var id      = document.getElementById('idInput').value.trim();
+    if (!nameRaw) { document.getElementById('nameInput').focus(); return; }
+    var names = nameRaw.split(/[,，、\n]/).map(function(n){ return n.trim(); }).filter(Boolean);
+    for (var i=0; i<names.length; i++) {
+      await callScript({action:'addStudent', name:names[i], id: names.length===1 ? id : ''});
+    }
+    document.getElementById('nameInput').value = '';
+    document.getElementById('idInput').value   = '';
+    document.getElementById('nameInput').focus();
+    toast('✓ ' + names.join(', ') + ' 추가됨');
+    await loadStudents();
+  }
+
+  // ── 학생 삭제 ──
+  async function deleteStudent(uid) {
+    if (!confirm('삭제할까요?')) return;
+    await callScript({action:'deleteStudent', uid:uid});
+    toast('삭제됐습니다');
+    await loadStudents();
+  }
+
+  async function clearAll() {
+    if (!confirm('학생 '+students.length+'명을 모두 삭제할까요?')) return;
+    for (var i=0; i<students.length; i++) {
+      await callScript({action:'deleteStudent', uid:students[i].uid});
+    }
+    toast('전체 삭제됐습니다');
+    await loadStudents();
+  }
+
+  // ── QR 이미지 URL (qrserver.com 사용 - 서버 불필요) ──
+  function studentQrSrc(s, size) {
+    var data = 'ATT:' + JSON.stringify({n: s.name, id: s.id||''});
+    return QR_API + (size||150) + 'x' + (size||150) + '&data=' + encodeURIComponent(data);
+  }
+
+  // ── 렌더 ──
+  function render() {
+    var count = students.length;
+    document.getElementById('countBadge').style.display  = count ? 'inline' : 'none';
+    document.getElementById('countBadge').textContent    = count + '명';
+    document.getElementById('clearAllBtn').style.display = count ? 'inline-block' : 'none';
+    document.getElementById('qrPrintCard').style.display = count ? 'block' : 'none';
+
+    var listEl = document.getElementById('studentList');
+    if (!count) {
+      listEl.innerHTML = '<div class="empty">아직 학생이 없습니다.<br>위에서 이름을 입력해 추가하세요.</div>';
+      return;
+    }
+    listEl.innerHTML = students.map(function(s){
+      return '<div class="student-row">' +
+        '<div class="s-info">' +
+          '<div class="avatar">' + s.name[0] + '</div>' +
+          '<div><div class="s-name">' + s.name + '</div>' +
+          (s.id ? '<div class="s-id">'+s.id+'</div>' : '') + '</div>' +
+        '</div>' +
+        '<button class="btn btn-red" onclick="deleteStudent(\''+s.uid+'\')">삭제</button>' +
+      '</div>';
+    }).join('');
+
+    renderQRGrid();
+  }
+
+  function renderQRGrid() {
+    var grid = document.getElementById('qrGrid');
+    grid.innerHTML = students.map(function(s){
+      var src       = studentQrSrc(s, 150);
+      var safeName  = encodeURIComponent(s.name);
+      var safeId    = encodeURIComponent(s.id||'');
+      var safeData  = encodeURIComponent(JSON.stringify({n:s.name,id:s.id||''}));
+      return '<div class="qr-item">' +
+        '<div class="qr-img-wrap" onclick="openModal(\''+encodeURIComponent(src)+'\',\''+safeName+'\',\''+safeId+'\')" title="클릭하면 크게 봅니다">' +
+          '<img src="'+src+'" alt="'+s.name+' QR" onerror="this.parentNode.innerHTML=\'<span style=color:#EF4444;font-size:.75rem;padding:10px;display:block>생성 오류</span>\'" />' +
+        '</div>' +
+        '<div class="qr-name">'+s.name+'</div>' +
+        '<div class="qr-id-label">'+(s.id||'')+'</div>' +
+        '<button class="btn btn-outline btn-sm" onclick="dlStudentQR(\''+safeName+'\',\''+safeData+'\')">⬇️ 저장</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ── 개인 QR 다운로드 ──
+  async function dlStudentQR(encodedName, encodedData) {
+    var name = decodeURIComponent(encodedName);
+    var data = 'ATT:' + decodeURIComponent(encodedData);
+    var src  = QR_API + '300x300&data=' + encodeURIComponent(data);
+    var blob = await fetch(src).then(function(r){ return r.blob(); });
+    var a    = document.createElement('a');
+    a.href   = URL.createObjectURL(blob);
+    a.download = 'QR_' + name + '.png';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(name + ' QR 저장됨');
+  }
+
+  // ── 공용 QR ──
+  function genPublicQR() {
+    var target = SCRIPT_URL;
+    var src    = QR_API + '220x220&data=' + encodeURIComponent(target);
+    var box    = document.getElementById('publicQrBox');
+    box.innerHTML = '<div class="qr-spinner"></div>';
+    var img = new Image();
+    img.onload = function(){
+      box.innerHTML = '';
+      img.style.borderRadius = '8px';
+      box.appendChild(img);
+      document.getElementById('dlBtn').style.display = 'inline-block';
+      document.getElementById('prBtn').style.display = 'inline-block';
+    };
+    img.onerror = function(){ box.innerHTML = '<span style="color:#EF4444">QR 생성 오류</span>'; };
+    img.src = src;
+    document.getElementById('publicQrUrl').textContent = target;
+  }
+
+  async function dlPublicQR() {
+    var src  = QR_API + '300x300&data=' + encodeURIComponent(SCRIPT_URL);
+    var blob = await fetch(src).then(function(r){ return r.blob(); });
+    var a    = document.createElement('a');
+    a.href   = URL.createObjectURL(blob);
+    a.download = 'newlife_QR.png';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('QR 저장됨');
+  }
+
+  function prPublicQR() {
+    var src = QR_API + '280x280&data=' + encodeURIComponent(SCRIPT_URL);
+    var w   = window.open('','_blank');
+    w.document.write('<!DOCTYPE html><html><head><title>뉴 라이프 클래스 QR</title>' +
+      '<style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;text-align:center;padding:30px;background:#fff}' +
+      'h2{font-size:1.8rem;margin-bottom:12px;color:#1F2937}img{border:2px solid #eee;border-radius:12px;padding:10px}p{color:#666;font-size:1rem;margin-top:12px}</style>' +
+      '</head><body><h2>📋 뉴 라이프 클래스 출석 체크</h2>' +
+      '<img src="'+src+'" width="280" height="280"/>' +
+      '<p>QR 코드를 스캔하고 이름을 입력하세요</p>' +
+      '<script>window.onload=function(){window.print()}<\/script></body></html>');
+  }
+
+  // ── 확대 모달 ──
+  var _modalSrc = '', _modalFileName = '';
+
+  function openModal(encodedSrc, encodedName, encodedId) {
+    var name   = decodeURIComponent(encodedName);
+    var id     = decodeURIComponent(encodedId);
+    var origSrc= decodeURIComponent(encodedSrc);
+    var bigSrc = origSrc.replace(/size=\d+x\d+/, 'size=400x400').replace(/300x300/, '400x400').replace(/150x150/, '400x400');
+    document.getElementById('modalQrImg').src       = bigSrc;
+    document.getElementById('modalName').textContent = name;
+    document.getElementById('modalId').textContent   = id || '';
+    _modalSrc      = bigSrc;
+    _modalFileName = 'QR_' + name + '.png';
+    document.getElementById('qrModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal(e) {
+    if (e && e.target !== document.getElementById('qrModal')) return;
+    document.getElementById('qrModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  async function dlFromModal() {
+    var blob = await fetch(_modalSrc).then(function(r){ return r.blob(); });
+    var a    = document.createElement('a');
+    a.href   = URL.createObjectURL(blob);
+    a.download = _modalFileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(_modalFileName.replace('QR_','').replace('.png','') + ' QR 저장됨');
+  }
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') {
+      document.getElementById('qrModal').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+  });
+
+  // ── Enter 키 ──
+  ['nameInput','idInput'].forEach(function(id){
+    document.getElementById(id).addEventListener('keydown', function(e){
+      if (e.key === 'Enter') addStudent();
+    });
+  });
+
+  // ── Toast ──
+  var toastTimer;
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2200);
+  }
+
+  // ── 초기화 ──
+  loadStudents();
+  genPublicQR();
+</script>
+</body>
+</html>
