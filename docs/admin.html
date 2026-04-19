@@ -259,20 +259,27 @@
   }
 
   // ── 학생 삭제 ──
-  async function deleteStudent(uid) {
+  function deleteStudent(uid) {
     if (!confirm('삭제할까요?')) return;
-    await callScript({action:'deleteStudent', uid:uid});
+    // 즉시 화면에서 제거
+    students = students.filter(function(s){ return s.uid !== uid; });
+    render();
     toast('삭제됐습니다');
-    await loadStudents();
+    // 백그라운드에서 서버 삭제
+    callScript({action:'deleteStudent', uid:uid}).catch(function(){});
   }
 
   async function clearAll() {
     if (!confirm('학생 '+students.length+'명을 모두 삭제할까요?')) return;
-    for (var i=0; i<students.length; i++) {
-      await callScript({action:'deleteStudent', uid:students[i].uid});
-    }
+    var uids = students.map(function(s){ return s.uid; });
+    // 즉시 화면에서 모두 제거
+    students = [];
+    render();
     toast('전체 삭제됐습니다');
-    await loadStudents();
+    // 백그라운드에서 서버 삭제
+    for (var i = 0; i < uids.length; i++) {
+      callScript({action:'deleteStudent', uid:uids[i]}).catch(function(){});
+    }
   }
 
   // ── QR 데이터 문자열 ──
