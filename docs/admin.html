@@ -234,28 +234,29 @@
     if (!nameRaw) { document.getElementById('nameInput').focus(); return; }
     _adding = true;
 
-    var names = nameRaw.split(/[,，、\n]/).map(function(n){ return n.trim(); }).filter(Boolean);
-
-    // 즉시 화면에 추가 (낙관적 UI)
-    names.forEach(function(name, i) {
-      students.push({ name: name, id: names.length === 1 ? id : '', uid: 'temp_' + Date.now() + '_' + i });
-    });
-    document.getElementById('nameInput').value = '';
-    document.getElementById('idInput').value   = '';
-    render();
-    toast('✓ ' + names.join(', ') + ' 추가됨');
-    document.getElementById('nameInput').focus();
-
-    // 서버에 순서대로 저장 후 실제 uid로 한 번만 동기화
     try {
+      var names = nameRaw.split(/[,，、\n]/).map(function(n){ return n.trim(); }).filter(Boolean);
+
+      // 즉시 화면에 추가 (낙관적 UI)
+      names.forEach(function(name, i) {
+        students.push({ name: name, id: names.length === 1 ? id : '', uid: 'temp_' + Date.now() + '_' + i });
+      });
+      document.getElementById('nameInput').value = '';
+      document.getElementById('idInput').value   = '';
+      render();
+      toast('✓ ' + names.join(', ') + ' 추가됨');
+      document.getElementById('nameInput').focus();
+
+      // 서버에 저장 후 uid 동기화
       for (var i = 0; i < names.length; i++) {
         await callScript({action:'addStudent', name:names[i], id: names.length===1 ? id : ''});
       }
       await loadStudents();
     } catch(e) {
       toast('저장 실패 — 새로고침 후 확인하세요');
+    } finally {
+      _adding = false;
     }
-    _adding = false;
   }
 
   // ── 학생 삭제 ──
