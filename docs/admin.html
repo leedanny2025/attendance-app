@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 — 뉴 라이프 클래스 출석부</title>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#F0F4FF;min-height:100vh;color:#1F2937}
@@ -315,13 +315,6 @@
     return 'ATT:' + JSON.stringify({n: s.name, id: s.id||''});
   }
 
-  // ── Canvas로 QR 생성 (외부 API 없음, 즉시 표시) ──
-  function makeQrCanvas(data, size) {
-    var div = document.createElement('div');
-    new QRCode(div, {text: data, width: size, height: size, colorDark:'#1F2937', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.M});
-    return div.querySelector('canvas') || div.querySelector('img');
-  }
-
   // ── 렌더 ──
   function render() {
     var count = students.length;
@@ -353,69 +346,72 @@
     var grid = document.getElementById('qrGrid');
     grid.innerHTML = '';
     students.forEach(function(s, idx) {
-      var safeName = encodeURIComponent(s.name);
-      var safeId   = encodeURIComponent(s.id||'');
       var item = document.createElement('div');
       item.className = 'qr-item';
       var wrap = document.createElement('div');
       wrap.className = 'qr-img-wrap';
       wrap.title = '클릭하면 크게 봅니다';
       wrap.onclick = function(){ openModalCanvas(s); };
-      var qrEl = makeQrCanvas(studentQrData(s), 150);
-      qrEl.style.cssText = 'width:150px;height:150px;display:block';
-      wrap.appendChild(qrEl);
-      item.innerHTML =
+      var canvas = document.createElement('canvas');
+      wrap.appendChild(canvas);
+      QRCode.toCanvas(canvas, studentQrData(s), {width:150, margin:1, color:{dark:'#1F2937',light:'#ffffff'}}, function(){});
+      var dlBtn = document.createElement('button');
+      dlBtn.className = 'btn btn-outline btn-sm';
+      dlBtn.textContent = '⬇️ 저장';
+      dlBtn.onclick = function(){ dlStudentQRCanvas(idx); };
+      item.appendChild(wrap);
+      item.insertAdjacentHTML('beforeend',
         '<div class="qr-name">'+s.name+'</div>' +
-        '<div class="qr-id-label">'+(s.id||'')+'</div>' +
-        '<button class="btn btn-outline btn-sm" onclick="dlStudentQRCanvas('+idx+')">⬇️ 저장</button>';
-      item.insertBefore(wrap, item.firstChild);
+        '<div class="qr-id-label">'+(s.id||'')+'</div>');
+      item.appendChild(dlBtn);
       grid.appendChild(item);
     });
   }
 
-  // ── 개인 QR 다운로드 (Canvas 기반, 즉시) ──
+  // ── 개인 QR 다운로드 ──
   function dlStudentQRCanvas(idx) {
     var s = students[idx];
-    var canvas = makeQrCanvas(studentQrData(s), 300);
-    var a = document.createElement('a');
-    a.href = canvas.toDataURL ? canvas.toDataURL('image/png') : canvas.src;
-    a.download = 'QR_' + s.name + '.png';
-    a.click();
-    toast(s.name + ' QR 저장됨');
+    QRCode.toDataURL(studentQrData(s), {width:300, margin:1, color:{dark:'#1F2937',light:'#ffffff'}}, function(err, url){
+      if (err) { toast('저장 실패'); return; }
+      var a = document.createElement('a');
+      a.href = url; a.download = 'QR_' + s.name + '.png'; a.click();
+      toast(s.name + ' QR 저장됨');
+    });
   }
 
-  // ── 공용 QR (Canvas 기반, 즉시 표시) ──
+  // ── 공용 QR ──
   function genPublicQR() {
     var box = document.getElementById('publicQrBox');
     box.innerHTML = '';
-    var qrEl = makeQrCanvas(SCRIPT_URL, 220);
-    qrEl.style.cssText = 'border-radius:8px;display:block';
-    box.appendChild(qrEl);
+    var canvas = document.createElement('canvas');
+    canvas.style.borderRadius = '8px';
+    box.appendChild(canvas);
+    QRCode.toCanvas(canvas, SCRIPT_URL, {width:220, margin:1, color:{dark:'#1F2937',light:'#ffffff'}}, function(){});
     document.getElementById('publicQrUrl').textContent = SCRIPT_URL;
     document.getElementById('dlBtn').style.display = 'inline-block';
     document.getElementById('prBtn').style.display = 'inline-block';
   }
 
   function dlPublicQR() {
-    var canvas = makeQrCanvas(SCRIPT_URL, 300);
-    var a = document.createElement('a');
-    a.href = canvas.toDataURL ? canvas.toDataURL('image/png') : canvas.src;
-    a.download = 'newlife_QR.png';
-    a.click();
-    toast('QR 저장됨');
+    QRCode.toDataURL(SCRIPT_URL, {width:300, margin:1, color:{dark:'#1F2937',light:'#ffffff'}}, function(err, url){
+      if (err) { toast('저장 실패'); return; }
+      var a = document.createElement('a');
+      a.href = url; a.download = 'newlife_QR.png'; a.click();
+      toast('QR 저장됨');
+    });
   }
 
   function prPublicQR() {
-    var canvas = makeQrCanvas(SCRIPT_URL, 280);
-    var dataUrl = canvas.toDataURL ? canvas.toDataURL('image/png') : canvas.src;
-    var w = window.open('','_blank');
-    w.document.write('<!DOCTYPE html><html><head><title>뉴 라이프 클래스 QR</title>' +
-      '<style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;text-align:center;padding:30px;background:#fff}' +
-      'h2{font-size:1.8rem;margin-bottom:12px;color:#1F2937}img{border:2px solid #eee;border-radius:12px;padding:10px}p{color:#666;font-size:1rem;margin-top:12px}</style>' +
-      '</head><body><h2>📋 뉴 라이프 클래스 출석 체크</h2>' +
-      '<img src="'+dataUrl+'" width="280" height="280"/>' +
-      '<p>QR 코드를 스캔하고 이름을 입력하세요</p>' +
-      '<script>window.onload=function(){window.print()}<\/script></body></html>');
+    QRCode.toDataURL(SCRIPT_URL, {width:280, margin:1, color:{dark:'#1F2937',light:'#ffffff'}}, function(err, dataUrl){
+      var w = window.open('','_blank');
+      w.document.write('<!DOCTYPE html><html><head><title>뉴 라이프 클래스 QR</title>' +
+        '<style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;text-align:center;padding:30px;background:#fff}' +
+        'h2{font-size:1.8rem;margin-bottom:12px;color:#1F2937}img{border:2px solid #eee;border-radius:12px;padding:10px}p{color:#666;font-size:1rem;margin-top:12px}</style>' +
+        '</head><body><h2>📋 뉴 라이프 클래스 출석 체크</h2>' +
+        '<img src="'+dataUrl+'" width="280" height="280"/>' +
+        '<p>QR 코드를 스캔하고 이름을 입력하세요</p>' +
+        '<script>window.onload=function(){window.print()}<\/script></body></html>');
+    });
   }
 
   // ── 확대 모달 (Canvas 기반) ──
@@ -425,9 +421,10 @@
     _modalStudent = s;
     var wrap = document.querySelector('.modal-qr-wrap');
     wrap.innerHTML = '';
-    var qrEl = makeQrCanvas(studentQrData(s), 280);
-    qrEl.style.cssText = 'width:280px;height:280px;display:block;border-radius:8px';
-    wrap.appendChild(qrEl);
+    var canvas = document.createElement('canvas');
+    canvas.style.cssText = 'display:block;border-radius:8px';
+    wrap.appendChild(canvas);
+    QRCode.toCanvas(canvas, studentQrData(s), {width:280, margin:1, color:{dark:'#1F2937',light:'#ffffff'}}, function(){});
     document.getElementById('modalName').textContent = s.name;
     document.getElementById('modalId').textContent   = s.id || '';
     document.getElementById('qrModal').classList.add('show');
@@ -442,7 +439,8 @@
 
   function dlFromModal() {
     if (!_modalStudent) return;
-    dlStudentQRCanvas(students.indexOf(_modalStudent));
+    var idx = students.indexOf(_modalStudent);
+    if (idx >= 0) dlStudentQRCanvas(idx);
   }
 
   document.addEventListener('keydown', function(e){
