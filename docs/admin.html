@@ -229,14 +229,24 @@
     var id      = document.getElementById('idInput').value.trim();
     if (!nameRaw) { document.getElementById('nameInput').focus(); return; }
     var names = nameRaw.split(/[,，、\n]/).map(function(n){ return n.trim(); }).filter(Boolean);
-    for (var i=0; i<names.length; i++) {
-      await callScript({action:'addStudent', name:names[i], id: names.length===1 ? id : ''});
-    }
+
+    // 즉시 화면에 추가 (낙관적 UI)
+    names.forEach(function(name) {
+      var tempUid = 'temp_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      students.push({ name: name, id: names.length === 1 ? id : '', uid: tempUid });
+    });
     document.getElementById('nameInput').value = '';
     document.getElementById('idInput').value   = '';
     document.getElementById('nameInput').focus();
+    render();
     toast('✓ ' + names.join(', ') + ' 추가됨');
-    await loadStudents();
+
+    // 백그라운드에서 서버에 저장 후 uid 동기화
+    for (var i = 0; i < names.length; i++) {
+      callScript({action:'addStudent', name:names[i], id: names.length===1 ? id : ''}).catch(function(){});
+    }
+    // 2초 후 실제 uid로 동기화
+    setTimeout(loadStudents, 2000);
   }
 
   // ── 학생 삭제 ──
