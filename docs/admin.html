@@ -261,15 +261,15 @@
   // ── 학생 삭제 ──
   var _undoTimer = null, _undoUid = null, _undoStudent = null;
 
-  function deleteStudent(uid) {
-    var s = students.find(function(x){ return x.uid === uid; });
+  function deleteStudent(idx) {
+    var s = students[idx];
     if (!s) return;
     // 즉시 화면에서 제거
-    students = students.filter(function(x){ return x.uid !== uid; });
+    students.splice(idx, 1);
     render();
     // 이전 되돌리기 있으면 확정 후 새 것 시작
     if (_undoTimer) { clearTimeout(_undoTimer); commitDelete(_undoUid); }
-    _undoUid = uid; _undoStudent = s;
+    _undoUid = s.uid; _undoStudent = s;
     toastUndo(s.name);
   }
 
@@ -332,16 +332,23 @@
       listEl.innerHTML = '<div class="empty">아직 학생이 없습니다.<br>위에서 이름을 입력해 추가하세요.</div>';
       return;
     }
-    listEl.innerHTML = students.map(function(s){
-      return '<div class="student-row">' +
+    listEl.innerHTML = '';
+    students.forEach(function(s, idx) {
+      var row = document.createElement('div');
+      row.className = 'student-row';
+      row.innerHTML =
         '<div class="s-info">' +
-          '<div class="avatar">' + s.name[0] + '</div>' +
-          '<div><div class="s-name">' + s.name + '</div>' +
+          '<div class="avatar">'+s.name[0]+'</div>' +
+          '<div><div class="s-name">'+s.name+'</div>' +
           (s.id ? '<div class="s-id">'+s.id+'</div>' : '') + '</div>' +
-        '</div>' +
-        '<button class="btn btn-red" onclick="deleteStudent(\''+s.uid+'\')">삭제</button>' +
-      '</div>';
-    }).join('');
+        '</div>';
+      var btn = document.createElement('button');
+      btn.className = 'btn btn-red';
+      btn.textContent = '삭제';
+      btn.onclick = function(){ deleteStudent(idx); };
+      row.appendChild(btn);
+      listEl.appendChild(row);
+    });
 
     renderQRGrid();
   }
