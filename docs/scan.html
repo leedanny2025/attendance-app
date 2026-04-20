@@ -2,17 +2,20 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>QR 스캔 출석 — 방식 2</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#0F172A;min-height:100vh;color:white}
-    .header{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)}
-    .header h1{font-size:1rem;font-weight:700}
-    .header a{color:rgba(255,255,255,.5);text-decoration:none;font-size:.8rem;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,.06)}
-    .header a:hover{background:rgba(255,255,255,.12);color:white}
-    .main{max-width:520px;margin:0 auto;padding:20px 16px}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;overscroll-behavior:none}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#0F172A;min-height:100dvh;color:white}
+    .header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08);min-height:52px}
+    .header h1{font-size:.95rem;font-weight:700}
+    .header a{color:rgba(255,255,255,.7);text-decoration:none;font-size:.82rem;padding:8px 14px;border-radius:8px;background:rgba(255,255,255,.08);touch-action:manipulation;min-height:36px;display:flex;align-items:center}
+    .header a:active{background:rgba(255,255,255,.18)}
+    .main{max-width:520px;margin:0 auto;padding:16px 14px}
     #reader{width:100%;border-radius:20px;overflow:hidden;background:#1e293b}
     #reader video{width:100%!important}
     .status-pill{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.07);border-radius:12px;padding:14px 16px;margin:14px 0}

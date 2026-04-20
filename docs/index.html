@@ -2,28 +2,30 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>뉴 라이프 클래스 출석부</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:linear-gradient(140deg,#4F46E5 0%,#7C3AED 50%,#9333EA 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;overscroll-behavior:none}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:linear-gradient(140deg,#4F46E5 0%,#7C3AED 50%,#9333EA 100%);min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
     .wrap{width:100%;max-width:420px}
-    .logo{text-align:center;margin-bottom:32px;color:white}
+    .logo{text-align:center;margin-bottom:28px;color:white}
     .logo h1{font-size:1.7rem;font-weight:900;letter-spacing:-0.5px}
     .logo p{color:rgba(255,255,255,.7);margin-top:6px;font-size:.9rem}
     .date{color:rgba(255,255,255,.6);font-size:.82rem;margin-top:6px}
-    .card{background:white;border-radius:20px;padding:22px 20px;margin-bottom:12px;display:flex;align-items:center;gap:18px;text-decoration:none;color:inherit;box-shadow:0 4px 20px rgba(0,0,0,.15);transition:transform .15s,box-shadow .15s;cursor:pointer}
-    .card:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,.2)}
-    .card:active{transform:scale(.98)}
-    .card-icon{font-size:2.2rem;width:56px;text-align:center;flex-shrink:0}
+    .card{background:white;border-radius:20px;padding:20px 18px;margin-bottom:12px;display:flex;align-items:center;gap:16px;text-decoration:none;color:inherit;box-shadow:0 4px 20px rgba(0,0,0,.15);touch-action:manipulation;min-height:80px}
+    .card:active{transform:scale(.97);box-shadow:0 2px 10px rgba(0,0,0,.15)}
+    .card-icon{font-size:2.2rem;width:52px;text-align:center;flex-shrink:0}
     .card-body{flex:1}
-    .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700;margin-bottom:5px}
+    .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700;margin-bottom:5px}
     .b-blue{background:#EEF2FF;color:#4F46E5}
     .b-green{background:#D1FAE5;color:#059669}
     .b-gray{background:#F3F4F6;color:#6B7280}
     .card h2{font-size:1rem;font-weight:800;color:#1F2937;margin-bottom:3px}
     .card p{font-size:.8rem;color:#9CA3AF;line-height:1.4}
-    .arrow{color:#D1D5DB;font-size:1.1rem}
+    .arrow{color:#D1D5DB;font-size:1.3rem;font-weight:300}
   </style>
 </head>
 <body>
