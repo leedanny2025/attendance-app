@@ -109,9 +109,8 @@
     <div class="card">
       <div class="card-title">➕ 학생 추가</div>
       <div class="input-col">
-        <input type="text" id="nameInput" placeholder="이름 (예: 홍길동)" autocomplete="off" autocorrect="off" autocapitalize="off"/>
         <div class="input-row2">
-          <input type="text" id="idInput" placeholder="학번 (선택)" style="flex:1" autocomplete="off"/>
+          <input type="text" id="nameInput" placeholder="이름 (예: 홍길동)" autocomplete="off" autocorrect="off" autocapitalize="off" style="flex:1"/>
           <button class="btn btn-primary" onclick="addStudent()" style="flex-shrink:0">추가</button>
         </div>
       </div>
@@ -228,7 +227,6 @@
   async function addStudent() {
     if (_adding) return;
     var nameRaw = document.getElementById('nameInput').value.trim();
-    var id      = document.getElementById('idInput').value.trim();
     if (!nameRaw) { document.getElementById('nameInput').focus(); return; }
     _adding = true;
 
@@ -237,17 +235,16 @@
 
       // 즉시 화면에 추가 (낙관적 UI)
       names.forEach(function(name, i) {
-        students.push({ name: name, id: names.length === 1 ? id : '', uid: 'temp_' + Date.now() + '_' + i });
+        students.push({ name: name, id: '', uid: 'temp_' + Date.now() + '_' + i });
       });
       document.getElementById('nameInput').value = '';
-      document.getElementById('idInput').value   = '';
       render();
       toast('✓ ' + names.join(', ') + ' 추가됨');
       document.getElementById('nameInput').focus();
 
       // 서버에 저장 후 uid 동기화
       for (var i = 0; i < names.length; i++) {
-        await callScript({action:'addStudent', name:names[i], id: names.length===1 ? id : ''});
+        await callScript({action:'addStudent', name:names[i], id:''});
       }
       await loadStudents();
     } catch(e) {
@@ -411,10 +408,8 @@
   });
 
   // ── Enter 키 ──
-  ['nameInput','idInput'].forEach(function(id){
-    document.getElementById(id).addEventListener('keydown', function(e){
-      if (e.key === 'Enter') addStudent();
-    });
+  document.getElementById('nameInput').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') addStudent();
   });
 
   // ── Toast ──
